@@ -22,22 +22,24 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: "8.3"
           extensions: mbstring, xml, bcmath, curl, zip, sqlite3
           coverage: none
 
-      - name: Copy Environment File
-        run: cp .env.example .env
+      - name: Validate composer.json
+        run: composer validate --strict
 
-      - name: Install Composer Dependencies
+      - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist
 
-      - name: Generate Application Key
+      - name: Copy Environment
+        run: cp .env.example .env
+
+      - name: Generate Key
         run: php artisan key:generate
 
       - name: Create SQLite Database
         run: |
-          mkdir -p database
           touch database/database.sqlite
 
       - name: Configure SQLite
@@ -47,6 +49,9 @@ jobs:
 
       - name: Run Migrations
         run: php artisan migrate --force
+
+      - name: PHP Syntax Check
+        run: find app routes config -name "*.php" -exec php -l {} \;
 
       - name: Run Tests
         run: php artisan test
