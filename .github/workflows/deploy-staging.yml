@@ -1,0 +1,72 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+
+          script: |
+            set -e
+
+            APP_DIR=/var/www/laravel-cicd-template
+            BACKUP_DIR=/var/www/backups
+
+            echo "=============================="
+            echo "Starting Deployment..."
+            echo "=============================="
+
+            mkdir -p $BACKUP_DIR
+
+            echo "Creating backup..."
+            rm -rf $BACKUP_DIR/latest
+            cp -R $APP_DIR $BACKUP_DIR/latest
+
+            cd $APP_DIR
+
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/staging
+
+            echo "Installing dependencies..."
+            composer install --no-dev --optimize-autoloader
+
+            php artisan migrate --force
+
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            chmod -R 775 storage bootstrap/cache
+
+            sudo systemctl reload php8.5-fpm
+            sudo systemctl reload nginx
+
+            echo "Running health check..."
+
+            curl --fail http://localhost || (
+                echo "Deployment Failed"
+                echo "Rolling back..."
+
+                rm -rf $APP_DIR
+                cp -R $BACKUP_DIR/latest $APP_DIR
+
+                sudo systemctl reload php8.5-fpm
+                sudo systemctl reload nginx
+
+                exit 1
+            )
+
+            echo "Deployment Successful"
