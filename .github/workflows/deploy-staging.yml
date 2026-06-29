@@ -1,0 +1,46 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+
+          script: |
+            cd /var/www/laravel-cicd-template
+
+            echo "Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/staging
+
+            echo "Installing Composer packages..."
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+
+            echo "Running migrations..."
+            php artisan migrate --force
+
+            echo "Optimizing Laravel..."
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            echo "Fixing permissions..."
+            sudo chown -R deployer:www-data storage bootstrap/cache
+            sudo chmod -R 775 storage bootstrap/cache
+
+            echo "Reloading services..."
+            sudo systemctl reload php8.5-fpm
+            sudo systemctl reload nginx
+
+            echo "Deployment completed!"
