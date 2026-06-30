@@ -1,116 +1,169 @@
 # Architecture
 
-## Overview
+# Overview
 
-This template provides a reusable CI/CD framework for Laravel applications using GitHub Actions and AWS EC2.
+This project provides a reusable CI/CD template for Laravel applications using GitHub Actions.
 
-The deployment pipeline automates testing, deployment, and application validation.
+The architecture is designed to automate code validation, staging deployments, and production deployments while following Git best practices. The deployment layer is designed to be reusable and can be configured for Hostinger Shared Hosting or any SSH-accessible Linux server.
 
 ---
 
-## Architecture
+# High Level Architecture
 
 ```text
-Developer
-     │
-     ▼
-Git Push
-     │
-     ▼
-GitHub Repository
-     │
-     ▼
-GitHub Actions
-     │
- SSH
-     ▼
-AWS EC2
-     │
-     ▼
-Git
-     │
-Composer
-     │
-Laravel
-     │
-PHP-FPM
-     │
-Nginx
-     │
-     ▼
-End Users
+                Developer
+                    │
+                    ▼
+           Feature Branch
+                    │
+                    ▼
+            GitHub Repository
+                    │
+                    ▼
+           GitHub Actions (CI)
+                    │
+        Run Tests & Validation
+                    │
+                    ▼
+             Staging Branch
+                    │
+                    ▼
+      Automatic Staging Deployment
+                    │
+             Health Validation
+                    │
+                    ▼
+              Main Branch
+                    │
+(Optional Manual Production Approval)
+                    │
+                    ▼
+      Production Deployment
+                    │
+                    ▼
+      Hostinger Shared Hosting
 ```
 
 ---
 
-## Components
+# Components
 
-### GitHub
+## GitHub Repository
 
-* Source Code
+Stores the Laravel application source code and manages the Git workflow.
+
+Responsibilities:
+
+* Version Control
 * Branch Management
 * Pull Requests
 
-### GitHub Actions
+---
 
-* Continuous Integration
-* Continuous Deployment
+## GitHub Actions
 
-### AWS EC2
+Provides Continuous Integration and Continuous Deployment.
 
-Hosts the Laravel application.
+Responsibilities:
 
-### Nginx
-
-Web server responsible for serving the Laravel application.
-
-### PHP-FPM
-
-Processes PHP requests.
-
-### Laravel
-
-Application framework.
+* Build
+* Test
+* Deployment Automation
 
 ---
 
-## Deployment Flow
+## Deployment Target
 
-Feature Branch
+The deployment target is Hostinger Shared Hosting.
 
-↓
+The deployment mechanism uses SSH and therefore can be adapted to any Linux hosting provider supporting SSH access.
 
-CI Pipeline
+---
 
-↓
+## Laravel Application
 
-Pull Request
+Handles all business logic.
 
-↓
+Responsibilities:
 
-Merge into Staging
+* HTTP Requests
+* Database Operations
+* Artisan Commands
+* Configuration Management
 
-↓
+---
 
+## Health Check Endpoint
+
+The application exposes a simple health endpoint.
+
+```text
+GET /health
+```
+
+This endpoint is used to verify that deployments complete successfully.
+
+---
+
+# Branch Strategy
+
+```text
+feature/*
+        │
+        ▼
+GitHub Actions CI
+        │
+        ▼
+staging
+        │
 Automatic Deployment
-
-↓
-
-Health Check
-
-↓
-
-Merge into Main
-
-↓
-
+        │
+        ▼
+main
+        │
+(Optional Approval)
+        ▼
 Production Deployment
+```
 
 ---
 
-## Notes
+# Deployment Process
 
-For demonstration purposes, both the staging and production GitHub environments currently deploy to the same EC2 instance.
+1. Developer pushes changes.
+2. CI pipeline executes automatically.
+3. Tests are executed.
+4. Code is merged into the staging branch.
+5. Staging deployment starts automatically.
+6. Health endpoint is validated.
+7. Code is merged into the main branch.
+8. Production deployment is triggered.
+9. (Optional) Manual approval can be configured using GitHub Environments.
 
-In production, each environment should use separate infrastructure.
+---
+
+# Security
+
+The template does not store deployment credentials in the repository.
+
+Sensitive values are managed through GitHub Secrets.
+
+Examples:
+
+* DEPLOY_HOST
+* DEPLOY_USER
+* DEPLOY_SSH_KEY
+* DEPLOY_PATH
+* APP_URL
+
+---
+
+# Design Goals
+
+* Reusable
+* Hosting Provider Independent
+* GitHub Native
+* Secure Secret Management
+* Easy to Extend
+* Production Ready
 

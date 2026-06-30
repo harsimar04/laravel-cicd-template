@@ -1,49 +1,124 @@
 # Rollback Guide
 
-## Purpose
+# Overview
 
-If a deployment introduces issues, the application can be restored by deploying a previous stable commit.
+This document describes the recommended rollback procedure for deployments using this Laravel CI/CD template.
 
-## Procedure
+The deployment workflow is intentionally designed to use Git-based rollbacks instead of maintaining filesystem backups, making the template reusable across different hosting providers.
 
-SSH into the EC2 server.
+---
 
-Navigate to the application directory.
+# When to Roll Back
 
-View commit history:
+Rollback should be considered when:
+
+* A deployment fails.
+* Critical application errors are detected.
+* Database changes are incompatible.
+* Health checks fail after deployment.
+* A production issue requires reverting to the last stable release.
+
+---
+
+# Rollback Procedure
+
+## Step 1
+
+Connect to the deployment server using SSH.
+
+---
+
+## Step 2
+
+Navigate to the Laravel application directory.
+
+```bash
+cd /path/to/laravel/project
+```
+
+---
+
+## Step 3
+
+View the Git commit history.
 
 ```bash
 git log --oneline
 ```
 
-Reset to a previous stable commit:
+Locate the last known stable commit.
+
+---
+
+## Step 4
+
+Reset the repository to the desired commit.
 
 ```bash
-git reset --hard <commit-hash>
+git reset --hard <commit_hash>
 ```
 
-Install dependencies:
+Replace `<commit_hash>` with the selected commit ID.
+
+---
+
+## Step 5
+
+Install Composer dependencies.
 
 ```bash
-composer install
+composer install --no-dev --prefer-dist --optimize-autoloader
 ```
 
-Optimize Laravel:
+---
+
+## Step 6
+
+Run database migrations if required.
+
+```bash
+php artisan migrate --force
+```
+
+---
+
+## Step 7
+
+Optimize the Laravel application.
 
 ```bash
 php artisan optimize
 ```
 
-Reload services:
+---
 
-```bash
-sudo systemctl reload php8.5-fpm
-sudo systemctl reload nginx
+## Step 8
+
+Verify the deployment.
+
+Example:
+
+```text
+GET /health
 ```
 
-Verify:
+The application should return HTTP 200.
 
-```
-/health
-```
+---
+
+# Rollback Checklist
+
+* Previous stable commit identified
+* Repository successfully reset
+* Composer dependencies installed
+* Laravel optimized
+* Health endpoint responding successfully
+
+---
+
+# Notes
+
+This template intentionally avoids automatic filesystem backups because backup strategies differ between hosting providers.
+
+Git-based rollback provides a simple, reusable, and provider-independent rollback mechanism suitable for reusable CI/CD templates.
 
