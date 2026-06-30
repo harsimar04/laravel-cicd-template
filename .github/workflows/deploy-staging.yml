@@ -1,4 +1,4 @@
-name: Deploy to Staging
+name: Deploy Staging
 
 on:
   push:
@@ -9,64 +9,48 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    environment:
+      name: staging
+
     steps:
-      - name: Deploy to EC2
+      - name: Deploy to Staging Server
         uses: appleboy/ssh-action@v1.2.0
 
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
 
           script: |
             set -e
 
-            APP_DIR=/var/www/laravel-cicd-template
-            BACKUP_DIR=/var/www/backups
+            APP_DIR="${{ secrets.DEPLOY_PATH }}"
 
-            echo "=============================="
-            echo "Starting Deployment..."
-            echo "=============================="
+            echo "=================================="
+            echo "Starting Staging Deployment..."
+            echo "=================================="
 
-            mkdir -p $BACKUP_DIR
+            cd "$APP_DIR"
 
-            echo "Creating backup..."
-            rm -rf $BACKUP_DIR/latest
-            cp -R $APP_DIR $BACKUP_DIR/latest
-
-            cd $APP_DIR
-
-            echo "Pulling latest code..."
+            echo "Fetching latest code..."
             git fetch origin
             git reset --hard origin/staging
 
-            echo "Installing dependencies..."
-            composer install --no-dev --optimize-autoloader
+            echo "Installing Composer dependencies..."
+            composer install --no-dev --prefer-dist --optimize-autoloader
 
+            echo "Running database migrations..."
             php artisan migrate --force
 
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
+            echo "Optimizing Laravel..."
+            php artisan optimize
 
-            chmod -R 775 storage bootstrap/cache
+            echo "Creating storage symlink..."
+            php artisan storage:link || true
 
-            sudo systemctl reload php8.5-fpm
-            sudo systemctl reload nginx
+            echo "Running Health Check..."
+            curl --fail "${{ secrets.APP_URL }}/health"
 
-            echo "Running health check..."
-
-            curl --fail http://localhost || (
-                echo "Deployment Failed"
-                echo "Rolling back..."
-
-                rm -rf $APP_DIR
-                cp -R $BACKUP_DIR/latest $APP_DIR
-
-                sudo systemctl reload php8.5-fpm
-                sudo systemctl reload nginx
-
-                exit 1
-            )
-
-            echo "Deployment Successful"
+            echo "=================================="
+            echo "Staging Deployment Successful!"
+            echo "=================================="
