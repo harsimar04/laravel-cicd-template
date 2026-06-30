@@ -145,6 +145,9 @@ Additional documentation is available in the **docs/** directory.
 * Hostinger Deployment
 * Rollback
 * Standard Operating Procedure
+- Onboarding Guide
+- Offboarding Guide
+- Security Model
 
 ---
 
